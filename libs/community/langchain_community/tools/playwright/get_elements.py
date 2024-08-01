@@ -19,6 +19,9 @@ if TYPE_CHECKING:
     from playwright.async_api import Page as AsyncPage
     from playwright.sync_api import Page as SyncPage
 
+import asyncio
+sem = asyncio.Semaphore(1)
+
 
 class GetElementsToolInput(BaseModel):
     """Input for GetElementsTool."""
@@ -105,7 +108,8 @@ class GetElementsTool(BaseBrowserTool):
         """Use the tool."""
         if self.async_browser is None:
             raise ValueError(f"Asynchronous browser not provided to {self.name}")
-        page = await aget_current_page(self.async_browser)
-        # Navigate to the desired webpage before using this tool
-        results = await _aget_elements(page, selector, attributes)
+        async with sem:
+            page = await aget_current_page(self.async_browser)
+            # Navigate to the desired webpage before using this tool
+            results = await _aget_elements(page, selector, attributes)
         return json.dumps(results, ensure_ascii=False)

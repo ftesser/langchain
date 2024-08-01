@@ -14,6 +14,9 @@ from langchain_community.tools.playwright.utils import (
     get_current_page,
 )
 
+import asyncio
+sem = asyncio.Semaphore(1)
+
 
 class CurrentWebPageTool(BaseBrowserTool):
     """Tool for getting the URL of the current webpage."""
@@ -39,5 +42,6 @@ class CurrentWebPageTool(BaseBrowserTool):
         """Use the tool."""
         if self.async_browser is None:
             raise ValueError(f"Asynchronous browser not provided to {self.name}")
-        page = await aget_current_page(self.async_browser)
+        async with sem:
+            page = await aget_current_page(self.async_browser)
         return str(page.url)

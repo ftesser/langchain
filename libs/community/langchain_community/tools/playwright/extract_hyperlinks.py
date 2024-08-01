@@ -18,6 +18,9 @@ from langchain_community.tools.playwright.utils import (
 if TYPE_CHECKING:
     pass
 
+import asyncio
+sem = asyncio.Semaphore(1)
+
 
 class ExtractHyperlinksToolInput(BaseModel):
     """Input for ExtractHyperlinksTool."""
@@ -86,6 +89,7 @@ class ExtractHyperlinksTool(BaseBrowserTool):
         """Use the tool asynchronously."""
         if self.async_browser is None:
             raise ValueError(f"Asynchronous browser not provided to {self.name}")
-        page = await aget_current_page(self.async_browser)
-        html_content = await page.content()
+        async with sem:
+            page = await aget_current_page(self.async_browser)
+            html_content = await page.content()
         return self.scrape_page(page, html_content, absolute_urls)

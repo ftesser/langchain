@@ -15,6 +15,10 @@ from langchain_community.tools.playwright.utils import (
 )
 
 
+import asyncio
+sem = asyncio.Semaphore(1)
+
+
 class ExtractTextTool(BaseBrowserTool):
     """Tool for extracting all the text on the current webpage."""
 
@@ -59,8 +63,9 @@ class ExtractTextTool(BaseBrowserTool):
         # Use Beautiful Soup since it's faster than looping through the elements
         from bs4 import BeautifulSoup
 
-        page = await aget_current_page(self.async_browser)
-        html_content = await page.content()
+        async with sem:
+            page = await aget_current_page(self.async_browser)
+            html_content = await page.content()
 
         # Parse the HTML content with BeautifulSoup
         soup = BeautifulSoup(html_content, "lxml")

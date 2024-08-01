@@ -15,6 +15,10 @@ from langchain_community.tools.playwright.utils import (
 )
 
 
+import asyncio
+sem = asyncio.Semaphore(1)
+
+
 class ClickToolInput(BaseModel):
     """Input for ClickTool."""
 
@@ -71,17 +75,18 @@ class ClickTool(BaseBrowserTool):
         """Use the tool."""
         if self.async_browser is None:
             raise ValueError(f"Asynchronous browser not provided to {self.name}")
-        page = await aget_current_page(self.async_browser)
-        # Navigate to the desired webpage before using this tool
-        selector_effective = self._selector_effective(selector=selector)
-        from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+        async with sem:
+            page = await aget_current_page(self.async_browser)
+            # Navigate to the desired webpage before using this tool
+            selector_effective = self._selector_effective(selector=selector)
+            from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-        try:
-            await page.click(
-                selector_effective,
-                strict=self.playwright_strict,
-                timeout=self.playwright_timeout,
-            )
-        except PlaywrightTimeoutError:
-            return f"Unable to click on element '{selector}'"
+            try:
+                await page.click(
+                    selector_effective,
+                    strict=self.playwright_strict,
+                    timeout=self.playwright_timeout,
+                )
+            except PlaywrightTimeoutError:
+                return f"Unable to click on element '{selector}'"
         return f"Clicked element '{selector}'"

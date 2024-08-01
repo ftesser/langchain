@@ -14,6 +14,9 @@ from langchain_community.tools.playwright.utils import (
     get_current_page,
 )
 
+import asyncio
+sem = asyncio.Semaphore(1)
+
 
 class NavigateBackTool(BaseBrowserTool):
     """Navigate back to the previous page in the browser history."""
@@ -44,8 +47,9 @@ class NavigateBackTool(BaseBrowserTool):
         """Use the tool."""
         if self.async_browser is None:
             raise ValueError(f"Asynchronous browser not provided to {self.name}")
-        page = await aget_current_page(self.async_browser)
-        response = await page.go_back()
+        async with sem:
+            page = await aget_current_page(self.async_browser)
+            response = await page.go_back()
 
         if response:
             return (

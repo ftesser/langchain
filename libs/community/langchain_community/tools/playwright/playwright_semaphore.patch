@@ -1,0 +1,196 @@
+diff --git click.py click.py
+index 5cf5cdda1..e6e201368 100644
+--- click.py
++++ click.py
+@@ -15,6 +15,10 @@ from langchain_community.tools.playwright.utils import (
+ )
+ 
+ 
++import asyncio
++sem = asyncio.Semaphore(1)
++
++
+ class ClickToolInput(BaseModel):
+     """Input for ClickTool."""
+ 
+@@ -71,17 +75,18 @@ class ClickTool(BaseBrowserTool):
+         """Use the tool."""
+         if self.async_browser is None:
+             raise ValueError(f"Asynchronous browser not provided to {self.name}")
+-        page = await aget_current_page(self.async_browser)
+-        # Navigate to the desired webpage before using this tool
+-        selector_effective = self._selector_effective(selector=selector)
+-        from playwright.async_api import TimeoutError as PlaywrightTimeoutError
++        async with sem:
++            page = await aget_current_page(self.async_browser)
++            # Navigate to the desired webpage before using this tool
++            selector_effective = self._selector_effective(selector=selector)
++            from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+ 
+-        try:
+-            await page.click(
+-                selector_effective,
+-                strict=self.playwright_strict,
+-                timeout=self.playwright_timeout,
+-            )
+-        except PlaywrightTimeoutError:
+-            return f"Unable to click on element '{selector}'"
++            try:
++                await page.click(
++                    selector_effective,
++                    strict=self.playwright_strict,
++                    timeout=self.playwright_timeout,
++                )
++            except PlaywrightTimeoutError:
++                return f"Unable to click on element '{selector}'"
+         return f"Clicked element '{selector}'"
+diff --git current_page.py current_page.py
+index 9ea5e0e1f..8495fbc72 100644
+--- current_page.py
++++ current_page.py
+@@ -14,6 +14,9 @@ from langchain_community.tools.playwright.utils import (
+     get_current_page,
+ )
+ 
++import asyncio
++sem = asyncio.Semaphore(1)
++
+ 
+ class CurrentWebPageTool(BaseBrowserTool):
+     """Tool for getting the URL of the current webpage."""
+@@ -39,5 +42,6 @@ class CurrentWebPageTool(BaseBrowserTool):
+         """Use the tool."""
+         if self.async_browser is None:
+             raise ValueError(f"Asynchronous browser not provided to {self.name}")
+-        page = await aget_current_page(self.async_browser)
++        async with sem:
++            page = await aget_current_page(self.async_browser)
+         return str(page.url)
+diff --git extract_hyperlinks.py extract_hyperlinks.py
+index 3cac3c496..64222ac68 100644
+--- extract_hyperlinks.py
++++ extract_hyperlinks.py
+@@ -18,6 +18,9 @@ from langchain_community.tools.playwright.utils import (
+ if TYPE_CHECKING:
+     pass
+ 
++import asyncio
++sem = asyncio.Semaphore(1)
++
+ 
+ class ExtractHyperlinksToolInput(BaseModel):
+     """Input for ExtractHyperlinksTool."""
+@@ -86,6 +89,7 @@ class ExtractHyperlinksTool(BaseBrowserTool):
+         """Use the tool asynchronously."""
+         if self.async_browser is None:
+             raise ValueError(f"Asynchronous browser not provided to {self.name}")
+-        page = await aget_current_page(self.async_browser)
+-        html_content = await page.content()
++        async with sem:
++            page = await aget_current_page(self.async_browser)
++            html_content = await page.content()
+         return self.scrape_page(page, html_content, absolute_urls)
+diff --git extract_text.py extract_text.py
+index 0cf112b0f..5a1511955 100644
+--- extract_text.py
++++ extract_text.py
+@@ -15,6 +15,10 @@ from langchain_community.tools.playwright.utils import (
+ )
+ 
+ 
++import asyncio
++sem = asyncio.Semaphore(1)
++
++
+ class ExtractTextTool(BaseBrowserTool):
+     """Tool for extracting all the text on the current webpage."""
+ 
+@@ -59,8 +63,9 @@ class ExtractTextTool(BaseBrowserTool):
+         # Use Beautiful Soup since it's faster than looping through the elements
+         from bs4 import BeautifulSoup
+ 
+-        page = await aget_current_page(self.async_browser)
+-        html_content = await page.content()
++        async with sem:
++            page = await aget_current_page(self.async_browser)
++            html_content = await page.content()
+ 
+         # Parse the HTML content with BeautifulSoup
+         soup = BeautifulSoup(html_content, "lxml")
+diff --git get_elements.py get_elements.py
+index 3b88529fc..086115a0e 100644
+--- get_elements.py
++++ get_elements.py
+@@ -19,6 +19,9 @@ if TYPE_CHECKING:
+     from playwright.async_api import Page as AsyncPage
+     from playwright.sync_api import Page as SyncPage
+ 
++import asyncio
++sem = asyncio.Semaphore(1)
++
+ 
+ class GetElementsToolInput(BaseModel):
+     """Input for GetElementsTool."""
+@@ -105,7 +108,8 @@ class GetElementsTool(BaseBrowserTool):
+         """Use the tool."""
+         if self.async_browser is None:
+             raise ValueError(f"Asynchronous browser not provided to {self.name}")
+-        page = await aget_current_page(self.async_browser)
+-        # Navigate to the desired webpage before using this tool
+-        results = await _aget_elements(page, selector, attributes)
++        async with sem:
++            page = await aget_current_page(self.async_browser)
++            # Navigate to the desired webpage before using this tool
++            results = await _aget_elements(page, selector, attributes)
+         return json.dumps(results, ensure_ascii=False)
+diff --git navigate.py navigate.py
+index 82f6349ff..fbb559a03 100644
+--- navigate.py
++++ navigate.py
+@@ -15,6 +15,9 @@ from langchain_community.tools.playwright.utils import (
+     get_current_page,
+ )
+ 
++import asyncio
++sem = asyncio.Semaphore(1)
++
+ 
+ class NavigateToolInput(BaseModel):
+     """Input for NavigateToolInput."""
+@@ -75,7 +78,8 @@ class NavigateTool(BaseBrowserTool):
+         """Use the tool."""
+         if self.async_browser is None:
+             raise ValueError(f"Asynchronous browser not provided to {self.name}")
+-        page = await aget_current_page(self.async_browser)
+-        response = await page.goto(url)
++        async with sem:
++            page = await aget_current_page(self.async_browser)
++            response = await page.goto(url)
+         status = response.status if response else "unknown"
+         return f"Navigating to {url} returned status code {status}"
+diff --git navigate_back.py navigate_back.py
+index 5988fa7fe..557f7b290 100644
+--- navigate_back.py
++++ navigate_back.py
+@@ -14,6 +14,9 @@ from langchain_community.tools.playwright.utils import (
+     get_current_page,
+ )
+ 
++import asyncio
++sem = asyncio.Semaphore(1)
++
+ 
+ class NavigateBackTool(BaseBrowserTool):
+     """Navigate back to the previous page in the browser history."""
+@@ -44,8 +47,9 @@ class NavigateBackTool(BaseBrowserTool):
+         """Use the tool."""
+         if self.async_browser is None:
+             raise ValueError(f"Asynchronous browser not provided to {self.name}")
+-        page = await aget_current_page(self.async_browser)
+-        response = await page.go_back()
++        async with sem:
++            page = await aget_current_page(self.async_browser)
++            response = await page.go_back()
+ 
+         if response:
+             return (

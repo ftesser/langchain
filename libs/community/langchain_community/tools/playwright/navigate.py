@@ -15,6 +15,9 @@ from langchain_community.tools.playwright.utils import (
     get_current_page,
 )
 
+import asyncio
+sem = asyncio.Semaphore(1)
+
 
 class NavigateToolInput(BaseModel):
     """Input for NavigateToolInput."""
@@ -75,7 +78,8 @@ class NavigateTool(BaseBrowserTool):
         """Use the tool."""
         if self.async_browser is None:
             raise ValueError(f"Asynchronous browser not provided to {self.name}")
-        page = await aget_current_page(self.async_browser)
-        response = await page.goto(url)
+        async with sem:
+            page = await aget_current_page(self.async_browser)
+            response = await page.goto(url)
         status = response.status if response else "unknown"
         return f"Navigating to {url} returned status code {status}"
